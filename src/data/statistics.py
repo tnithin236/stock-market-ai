@@ -42,7 +42,7 @@ def summary_statistics(df: pd.DataFrame) -> Dict[str, float]:
 
 def adf_report(series: pd.Series, name: str) -> Dict[str, object]:
     """Augmented Dickey-Fuller test. H0: the series has a unit root (non-stationary)."""
-    stat, pvalue, *_ = adfuller(series.dropna(), autolag="AIC")
+    stat, pvalue, *_ = adfuller(series.dropna(), autolag="AIC", result_object=False)
     return {
         "series": name,
         "adf_statistic": round(float(stat), 4),

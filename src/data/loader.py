@@ -2,8 +2,10 @@
 import logging
 import re
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import yfinance as yf
@@ -93,6 +95,19 @@ def validate_data(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def drop_incomplete_bar(df: pd.DataFrame) -> pd.DataFrame:
+    """Drop today's bar if the US market has not closed yet (partial bars add noise/leakage)."""
+    now_et = datetime.now(ZoneInfo("America/New_York"))
+    last = df.index[-1].date()
+    market_open_or_pending = (
+        now_et.date() == last and (now_et.hour, now_et.minute) < (16, 15)
+    )
+    if market_open_or_pending:
+        logger.warning("Dropping incomplete bar for %s (market not closed yet)", last)
+        return df.iloc[:-1]
+    return df
+
+
 def _cache_path(raw_dir: Path, ticker: str, start: str, end: Optional[str], interval: str) -> Path:
     return raw_dir / f"{ticker}_{interval}_{start}_{end or 'latest'}.csv"
 
@@ -117,10 +132,10 @@ def load_stock_data(
         if end is not None or age_h <= max_age_hours:
             logger.info("Loading %s from cache (%s)", ticker, cache.name)
             df = pd.read_csv(cache, index_col="Date", parse_dates=True)
-            return validate_data(df)
+            return drop_incomplete_bar(validate_data(df))
 
     logger.info("Downloading %s from Yahoo Finance", ticker)
     df = validate_data(download_stock_data(ticker, start, end, interval))
     df.to_csv(cache)
     logger.info("Saved to %s", cache)
-    return df
+    return drop_incomplete_bar(df)

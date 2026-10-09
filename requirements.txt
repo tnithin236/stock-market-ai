@@ -4,9 +4,10 @@ numpy>=1.26
 yfinance>=0.2.40
 pyyaml>=6.0
 
+
 # Analysis / visualization
 scipy>=1.11
-statsmodels>=0.14
+statsmodels>=0.15
 matplotlib>=3.8
 plotly>=5.18
 
