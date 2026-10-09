@@ -1,0 +1,17 @@
+data:
+  ticker: AAPL
+  start_date: "2015-01-01"
+  end_date: null          # null = up to today
+  interval: 1d
+  raw_dir: data/raw
+  processed_dir: data/processed
+  cache_max_age_hours: 24
+
+paths:
+  figures_dir: reports/figures
+  models_dir: models
+
+eda:
+  ma_windows: [20, 50, 200]
+  vol_window: 21          # ~1 trading month
+  acf_lags: 30
