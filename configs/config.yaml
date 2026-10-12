@@ -10,8 +10,33 @@ data:
 paths:
   figures_dir: reports/figures
   models_dir: models
+  reports_dir: reports
 
 eda:
   ma_windows: [20, 50, 200]
   vol_window: 21          # ~1 trading month
   acf_lags: 30
+
+features:
+  sma_windows: [10, 20, 50]
+  ema_windows: [10, 20, 50]
+  rsi_window: 14
+  macd: {fast: 12, slow: 26, signal: 9}
+  bollinger: {window: 20, num_std: 2.0}
+  atr_window: 14
+  vol_windows: [10, 20]
+  momentum_windows: [5, 10]
+  price_lags: [1, 2, 3, 5]
+  return_lags: [1, 2, 3, 5]
+  volume_ma_window: 20
+
+split:
+  train_frac: 0.70
+  val_frac: 0.15          # test = remaining 15%
+  gap: 1                  # rows dropped between sets (label of day t uses day t+1)
+
+scaling:
+  method: standard        # standard | robust
+
+baselines:
+  ma_windows: [10, 20]    # must exist in features.sma_windows
