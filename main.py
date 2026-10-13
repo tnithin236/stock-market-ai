@@ -1,4 +1,4 @@
-"""Project CLI. Step 1 provides `eda`; later steps add train / evaluate / backtest."""
+"""Project CLI. Commands: eda, features, baseline (later: train, backtest)."""
 import argparse
 import logging
 from pathlib import Path
@@ -55,6 +55,33 @@ def run_eda(args: argparse.Namespace) -> None:
     print(f"\nSaved {len(figs)} interactive figures to {out}")
 
 
+def run_features(args: argparse.Namespace) -> None:
+    from src.features.engineering import feature_columns
+    from src.training.dataset import load_supervised
+
+    cfg = load_config(args.config)
+    ticker, full, sup = load_supervised(cfg, args.ticker, args.start, args.end, args.refresh)
+    cols = feature_columns(sup)
+    out = resolve_path(cfg["data"]["processed_dir"]) / f"{ticker}_features.csv"
+    sup.to_csv(out)
+    print(f"\n=== {ticker}: feature table ===")
+    print(f"full frame: {full.shape} | supervised: {sup.shape} | inputs: {len(cols)}")
+    print("NaN cells left in supervised table:", int(sup.isna().sum().sum()))
+    print("\nFeatures:\n  " + ", ".join(cols))
+    print("\nLast 3 rows (selected columns):")
+    show = [c for c in ["Close", "return", "rsi_14", "macd", "bb_pctb", "atr_14_pct",
+                        "vol_20", "target_close", "target_direction"] if c in sup.columns]
+    print(sup[show].tail(3).round(4).to_string())
+    print(f"\nSaved to {out}")
+
+
+def run_baseline(args: argparse.Namespace) -> None:
+    from src.training.run_baselines import run_baselines
+
+    cfg = load_config(args.config)
+    run_baselines(cfg, args.ticker, args.start, args.end, args.refresh)
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Stock Market AI project CLI")
     p.add_argument("--config", default="configs/config.yaml")
@@ -66,6 +93,17 @@ def build_parser() -> argparse.ArgumentParser:
     eda.add_argument("--end", default=None)
     eda.add_argument("--refresh", action="store_true", help="Ignore the local cache")
     eda.set_defaults(func=run_eda)
+
+    for name, fn, helptext in (
+        ("features", run_features, "Build the leakage-safe feature table"),
+        ("baseline", run_baseline, "Chronological split + naive baselines"),
+    ):
+        sp = sub.add_parser(name, help=helptext)
+        sp.add_argument("--ticker", default=None)
+        sp.add_argument("--start", default=None)
+        sp.add_argument("--end", default=None)
+        sp.add_argument("--refresh", action="store_true", help="Ignore the local cache")
+        sp.set_defaults(func=fn)
     return p
 
 
