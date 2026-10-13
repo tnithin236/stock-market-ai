@@ -31,6 +31,8 @@ from src.visualization import model_plots as mp
 
 logger = logging.getLogger(__name__)
 
+MIN_TUNING_GAIN = 0.001  # tuned params must beat default validation loss by at least 0.1%
+
 
 def _json_default(o):
     return o.item() if hasattr(o, "item") else str(o)
@@ -170,7 +172,7 @@ def run_xgboost(
                 spw if task == "classification" else None,
                 xc["n_estimators"], xc["early_stopping_rounds"])
             default_val = float(model.best_score)
-            adopted = best_val < default_val
+            adopted = best_val < default_val * (1 - MIN_TUNING_GAIN)
             if adopted:
                 model = make_model(task, best_params, xc["n_estimators"], xc["early_stopping_rounds"],
                                    seed, spw if task == "classification" else None)
@@ -182,7 +184,8 @@ def run_xgboost(
                 print(f"  validation loss: default {default_val:.6f} -> tuned {best_val:.6f} "
                       "(part of this gain may be overfitting to validation; judge on TEST)")
             else:
-                print(f"  tuned loss {best_val:.6f} did not beat default {default_val:.6f}; keeping default params")
+                print(f"  tuned loss {best_val:.6f} did not beat default {default_val:.6f} by at least "
+                      f"{MIN_TUNING_GAIN:.1%}; keeping default params")
         final[task], params_used[task] = model, params
 
     reg, clf = final["regression"], final["classification"]

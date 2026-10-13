@@ -26,8 +26,17 @@ def mean_abs_contribution(contrib: pd.DataFrame) -> pd.Series:
 
 
 def gain_importance(model, columns) -> pd.Series:
-    """Share of total split gain per feature (0 for features never used)."""
-    raw = model.get_booster().get_score(importance_type="gain")
+    """Share of total split gain per feature, counting ONLY the trees used for prediction.
+
+    Early stopping leaves extra trees after the best round. predict() ignores them,
+    so importance must ignore them too.
+    """
+    booster = model.get_booster()
+    try:
+        booster = booster[: int(model.best_iteration) + 1]
+    except Exception:
+        pass
+    raw = booster.get_score(importance_type="gain")
     s = pd.Series({c: float(raw.get(c, 0.0)) for c in columns})
     total = s.sum()
     return (s / total if total > 0 else s).sort_values(ascending=False)
