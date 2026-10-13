@@ -40,3 +40,18 @@ scaling:
 
 baselines:
   ma_windows: [10, 20]    # must exist in features.sma_windows
+
+xgboost:
+  n_estimators: 500           # upper bound; early stopping picks the real number
+  early_stopping_rounds: 50   # stop when validation loss has not improved for 50 rounds
+  seed: 42
+  use_class_weight: true      # scale_pos_weight = n_down / n_up on the training set
+  params:
+    max_depth: 3
+    learning_rate: 0.05
+    subsample: 0.8
+    colsample_bytree: 0.8
+    min_child_weight: 5
+    reg_lambda: 1.0
+  tuning:
+    n_trials: 30
