@@ -55,3 +55,27 @@ xgboost:
     reg_lambda: 1.0
   tuning:
     n_trials: 30
+
+lstm:
+  feature_set: scale_free      # scale_free (22 inputs) | all (44 inputs)
+  seq_len: 30                  # trading days of history per sample
+  hidden_size: 32
+  num_layers: 1
+  dropout: 0.2
+  lr: 0.001
+  weight_decay: 0.0001
+  batch_size: 64
+  max_epochs: 60
+  patience: 10                 # early stopping (epochs without validation improvement)
+  lr_patience: 3               # ReduceLROnPlateau patience
+  lr_factor: 0.5
+  grad_clip: 1.0
+  clip_scaled: 5.0             # clip standardized features to +/- 5 sigma
+  seed: 42
+  use_class_weight: true
+  tuning:
+    n_trials: 12
+    seq_len_choices: [10, 20, 30, 60]
+    max_epochs: 40
+  permutation:
+    n_repeats: 5

@@ -1,4 +1,4 @@
-"""Project CLI. Commands: eda, features, baseline, xgboost (later: lstm, transformer, backtest)."""
+"""Project CLI. Commands: eda, features, baseline, xgboost, lstm (later: transformer, backtest)."""
 import argparse
 import logging
 from pathlib import Path
@@ -90,6 +90,14 @@ def run_xgboost_cmd(args: argparse.Namespace) -> None:
                 tune=args.tune, n_trials=args.trials, make_plots=not args.no_plots)
 
 
+def run_lstm_cmd(args: argparse.Namespace) -> None:
+    from src.training.train_lstm import run_lstm
+
+    cfg = load_config(args.config)
+    run_lstm(cfg, args.ticker, args.start, args.end, args.refresh,
+             tune=args.tune, n_trials=args.trials, make_plots=not args.no_plots)
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Stock Market AI project CLI")
     p.add_argument("--config", default="configs/config.yaml")
@@ -122,6 +130,16 @@ def build_parser() -> argparse.ArgumentParser:
     xg.add_argument("--trials", type=int, default=None, help="Optuna trials (default from config)")
     xg.add_argument("--no-plots", action="store_true", help="Skip figure generation")
     xg.set_defaults(func=run_xgboost_cmd)
+
+    ls = sub.add_parser("lstm", help="Train/evaluate an LSTM (regression + classification)")
+    ls.add_argument("--ticker", default=None)
+    ls.add_argument("--start", default=None)
+    ls.add_argument("--end", default=None)
+    ls.add_argument("--refresh", action="store_true", help="Ignore the local cache")
+    ls.add_argument("--tune", action="store_true", help="Run Optuna tuning (validation only)")
+    ls.add_argument("--trials", type=int, default=None, help="Optuna trials (default from config)")
+    ls.add_argument("--no-plots", action="store_true", help="Skip figure generation")
+    ls.set_defaults(func=run_lstm_cmd)
     return p
 
 

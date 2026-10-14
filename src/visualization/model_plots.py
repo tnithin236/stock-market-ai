@@ -97,3 +97,18 @@ def plot_calibration(y_true, probs: Dict[str, np.ndarray], title: str, path, n_b
     ax.set_title(title)
     ax.legend(fontsize=8)
     return _save(fig, path)
+
+
+def plot_training_curves(history: Dict[str, list], title: str, path, best_epoch: Optional[int] = None) -> str:
+    """Train vs validation loss per epoch (the overfitting diagnostic)."""
+    epochs = np.arange(1, len(history["train_loss"]) + 1)
+    fig, ax = plt.subplots(figsize=(6.5, 4))
+    ax.plot(epochs, history["train_loss"], label="train loss")
+    ax.plot(epochs, history["val_loss"], label="validation loss")
+    if best_epoch:
+        ax.axvline(best_epoch, color="grey", ls="--", lw=1, label=f"best epoch ({best_epoch})")
+    ax.set_xlabel("epoch")
+    ax.set_ylabel("loss")
+    ax.set_title(title)
+    ax.legend()
+    return _save(fig, path)
