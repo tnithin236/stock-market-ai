@@ -93,3 +93,15 @@ def test_tree_contributions_sum_to_raw_margin(ohlcv):
     contrib, bias = tree_contributions(m, s.test[cols])
     margin = m.predict(s.test[cols], iteration_range=(0, int(m.best_iteration) + 1))
     assert np.allclose(contrib.sum(axis=1).to_numpy() + bias, margin, atol=1e-4)
+
+
+
+
+def test_platt_never_flips_the_direction_of_an_anti_correlated_score():
+    rng = np.random.default_rng(3)
+    raw = rng.uniform(0.2, 0.8, 400)
+    y = (rng.uniform(size=400) < (1 - raw)).astype(int)      # outcome is ANTI-correlated with the score
+    cal = PlattCalibrator().fit(raw, y)
+    out = cal.predict(np.linspace(0.1, 0.9, 20))
+    assert np.allclose(out, out[0])                          # constant, not a flipped ranking
+    assert np.isclose(out[0], y.mean())

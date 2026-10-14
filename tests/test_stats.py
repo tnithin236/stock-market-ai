@@ -35,3 +35,13 @@ def test_r2_vs_zero():
     assert r2_vs_zero(y, y) == 1.0
     assert r2_vs_zero(y, np.zeros(4)) == 0.0
     assert r2_vs_zero(y, -y) < 0
+
+
+def test_platt_keeps_positive_slope_calibration_monotonic():
+    from src.models.calibration import PlattCalibrator
+    rng = np.random.default_rng(5)
+    raw = rng.uniform(0.2, 0.8, 500)
+    y = (rng.uniform(size=500) < raw).astype(int)
+    cal = PlattCalibrator().fit(raw, y)
+    out = cal.predict(np.linspace(0.1, 0.9, 30))
+    assert cal.constant is None and np.all(np.diff(out) >= -1e-12)
