@@ -79,3 +79,29 @@ lstm:
     max_epochs: 40
   permutation:
     n_repeats: 5
+
+transformer:
+  feature_set: scale_free
+  seq_len: 30
+  d_model: 32                  # embedding dimension (must be divisible by nhead)
+  nhead: 4                     # attention heads
+  num_layers: 2                # encoder blocks
+  dim_feedforward: 64
+  dropout: 0.1
+  lr: 0.0005
+  weight_decay: 0.0001
+  batch_size: 64
+  max_epochs: 60
+  patience: 10
+  lr_patience: 3
+  lr_factor: 0.5
+  grad_clip: 1.0
+  clip_scaled: 5.0
+  seed: 42
+  use_class_weight: true
+  tuning:
+    n_trials: 12
+    seq_len_choices: [10, 20, 30, 60]
+    max_epochs: 40
+  permutation:
+    n_repeats: 5

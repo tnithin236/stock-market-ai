@@ -1,10 +1,10 @@
-"""Fit one LSTM for one task (shared by the final run and by hyperparameter tuning)."""
+"""Fit one sequence model for one task (shared by the final run and by hyperparameter tuning)."""
 from dataclasses import replace
 from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 
-from src.models.lstm import LSTMNet
+from src.models.factory import build_model
 from src.training.nn_trainer import TrainConfig, set_seed, train_model
 from src.training.sequences import SequenceSet
 
@@ -27,10 +27,11 @@ def fit_task(
     pos_weight: Optional[float],
     seed: int,
     ckpt_path=None,
-) -> Tuple[LSTMNet, Dict[str, Any]]:
+    arch: str = "lstm",
+) -> Tuple[Any, Dict[str, Any]]:
     set_seed(seed)
     tc = replace(base_tc, lr=hp["lr"], weight_decay=hp["weight_decay"], batch_size=hp["batch_size"])
-    model = LSTMNet(data["train"].X.shape[2], hp["hidden_size"], hp["num_layers"], hp["dropout"])
+    model = build_model(arch, data["train"].X.shape[2], hp)
     result = train_model(
         model, task,
         (data["train"].X, task_targets(data["train"], task, y_std)),

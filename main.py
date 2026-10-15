@@ -1,4 +1,4 @@
-"""Project CLI. Commands: eda, features, baseline, xgboost, lstm (later: transformer, backtest)."""
+"""Project CLI. Commands: eda, features, baseline, xgboost, lstm, transformer, compare (later: backtest)."""
 import argparse
 import logging
 from pathlib import Path
@@ -98,6 +98,43 @@ def run_lstm_cmd(args: argparse.Namespace) -> None:
              tune=args.tune, n_trials=args.trials, make_plots=not args.no_plots)
 
 
+def run_transformer_cmd(args: argparse.Namespace) -> None:
+    from src.training.train_transformer import run_transformer
+
+    cfg = load_config(args.config)
+    run_transformer(cfg, args.ticker, args.start, args.end, args.refresh,
+                    tune=args.tune, n_trials=args.trials, make_plots=not args.no_plots)
+
+
+def run_compare(args: argparse.Namespace) -> None:
+    from src.evaluation.compare import build_comparison, significant_models
+    from src.visualization.model_plots import plot_model_comparison
+
+    cfg = load_config(args.config)
+    ticker = normalize_ticker(args.ticker or cfg["data"]["ticker"])
+    reports = resolve_path(cfg["paths"].get("reports_dir", "reports"))
+    reg, cls, found = build_comparison(reports, ticker)
+    if not found:
+        print("No result files found. Run `python main.py xgboost`, `lstm` and/or `transformer` first.")
+        return
+    print(f"\n=== {ticker}: model comparison (TEST period) from {', '.join(found)} ===")
+    print("\nRegression (next-day close; RMSE_vs_naive < 1 and oosR2_ret > 0 would mean an edge):")
+    print(reg.round(4).to_string())
+    print("\nClassification (next-day direction):")
+    show = cls.copy()
+    show["acc_CI95"] = [f"[{a:.3f}, {b:.3f}]" for a, b in zip(show["acc_lo"], show["acc_hi"])]
+    show["auc_CI95"] = [f"[{a:.3f}, {b:.3f}]" for a, b in zip(show["auc_lo"], show["auc_hi"])]
+    print(show[["accuracy", "acc_CI95", "p_vs_majority", "roc_auc", "auc_CI95", "brier"]].round(4).to_string())
+    winners = significant_models(cls)
+    print("\nModels with a statistically significant edge (p<0.05 vs majority AND AUC interval above 0.5):",
+          winners if winners else "none")
+    out_csv = Path(reports) / f"model_comparison_{ticker}.csv"
+    cls.to_csv(out_csv)
+    fig = plot_model_comparison(cls, Path(resolve_path(cfg["paths"]["figures_dir"])) / f"{ticker}_model_comparison.png",
+                                f"{ticker}: test-set model comparison (95% intervals)")
+    print(f"\nSaved {out_csv}\nSaved {fig}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Stock Market AI project CLI")
     p.add_argument("--config", default="configs/config.yaml")
@@ -140,6 +177,20 @@ def build_parser() -> argparse.ArgumentParser:
     ls.add_argument("--trials", type=int, default=None, help="Optuna trials (default from config)")
     ls.add_argument("--no-plots", action="store_true", help="Skip figure generation")
     ls.set_defaults(func=run_lstm_cmd)
+
+    tf = sub.add_parser("transformer", help="Train/evaluate a Transformer (regression + classification)")
+    tf.add_argument("--ticker", default=None)
+    tf.add_argument("--start", default=None)
+    tf.add_argument("--end", default=None)
+    tf.add_argument("--refresh", action="store_true", help="Ignore the local cache")
+    tf.add_argument("--tune", action="store_true", help="Run Optuna tuning (validation only)")
+    tf.add_argument("--trials", type=int, default=None, help="Optuna trials (default from config)")
+    tf.add_argument("--no-plots", action="store_true", help="Skip figure generation")
+    tf.set_defaults(func=run_transformer_cmd)
+
+    cp = sub.add_parser("compare", help="Compare all trained models on the test period")
+    cp.add_argument("--ticker", default=None)
+    cp.set_defaults(func=run_compare)
     return p
 
 

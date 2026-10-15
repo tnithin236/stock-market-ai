@@ -112,3 +112,26 @@ def plot_training_curves(history: Dict[str, list], title: str, path, best_epoch:
     ax.set_title(title)
     ax.legend()
     return _save(fig, path)
+
+
+def plot_model_comparison(cls: pd.DataFrame, path, title: str = "Test-set model comparison") -> str:
+    """Accuracy and ROC-AUC with 95% intervals; the dotted line is the bar to beat."""
+    df = cls.copy()
+    df = df[df["roc_auc"].notna()] if "roc_auc" in df else df
+    names = list(df.index)
+    fig, axes = plt.subplots(1, 2, figsize=(11, 0.45 * len(names) + 2.2), sharey=True)
+    y = np.arange(len(names))
+    for ax, col, lo, hi, ref, ttl in (
+        (axes[0], "accuracy", "acc_lo", "acc_hi", float(df.loc["always_majority", "accuracy"]) if "always_majority" in df.index else 0.5, "Accuracy"),
+        (axes[1], "roc_auc", "auc_lo", "auc_hi", 0.5, "ROC-AUC"),
+    ):
+        vals = df[col].to_numpy(dtype=float)
+        err = np.vstack([vals - df[lo].to_numpy(dtype=float), df[hi].to_numpy(dtype=float) - vals])
+        err = np.nan_to_num(err, nan=0.0)
+        ax.errorbar(vals, y, xerr=err, fmt="o", color="#3b82f6", ecolor="#94a3b8", capsize=3)
+        ax.axvline(ref, color="k", ls=":", lw=1)
+        ax.set_title(ttl)
+        ax.set_yticks(y, names)
+        ax.invert_yaxis()
+    fig.suptitle(title)
+    return _save(fig, path)
