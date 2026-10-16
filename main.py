@@ -107,7 +107,7 @@ def run_transformer_cmd(args: argparse.Namespace) -> None:
 
 
 def run_compare(args: argparse.Namespace) -> None:
-    from src.evaluation.compare import build_comparison, significant_models
+    from src.evaluation.compare import build_comparison, read_test_periods, significant_models
     from src.visualization.model_plots import plot_model_comparison
 
     cfg = load_config(args.config)
@@ -117,6 +117,12 @@ def run_compare(args: argparse.Namespace) -> None:
     if not found:
         print("No result files found. Run `python main.py xgboost`, `lstm` and/or `transformer` first.")
         return
+    periods = read_test_periods(reports, ticker)
+    distinct = {p for p in periods.values() if p}
+    if len(distinct) > 1 or any(p is None for p in periods.values()):
+        print("\nWARNING: result files were NOT all produced on the same test period "
+              f"({periods}). The table below mixes data snapshots, so re-run "
+              "xgboost, lstm and transformer on the same data (see end_date in configs/config.yaml).")
     print(f"\n=== {ticker}: model comparison (TEST period) from {', '.join(found)} ===")
     print("\nRegression (next-day close; RMSE_vs_naive < 1 and oosR2_ret > 0 would mean an edge):")
     print(reg.round(4).to_string())

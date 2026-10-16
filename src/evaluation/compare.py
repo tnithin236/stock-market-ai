@@ -56,3 +56,15 @@ def significant_models(cls: pd.DataFrame, alpha: float = 0.05) -> list:
         return []
     ok = (cls["p_vs_majority"] < alpha) & (cls["auc_lo"] > 0.5)
     return list(cls.index[ok.fillna(False)])
+
+
+def read_test_periods(reports_dir, ticker: str) -> Dict[str, Optional[Tuple[str, str]]]:
+    """Test-period (start, end) recorded in each result file; None for files written before tracking."""
+    reports_dir = Path(reports_dir)
+    out: Dict[str, Optional[Tuple[str, str]]] = {}
+    for tag in RESULT_FILES:
+        path = reports_dir / f"{tag}_results_{ticker}.json"
+        if path.exists():
+            tp = json.loads(path.read_text()).get("test_period")
+            out[tag] = (tp[0], tp[1]) if tp else None
+    return out

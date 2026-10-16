@@ -121,6 +121,7 @@ def run_deep(
 
     results: Dict[str, Any] = {
         "ticker": ticker, "architecture": arch, "feature_set": lc["feature_set"], "n_features": len(cols),
+        "test_period": [str(split.test.index.min().date()), str(split.test.index.max().date())],
         "hyperparameters": {"regression": reg["hp"], "classification": clf["hp"]},
         "tuning": tuning_info, "regression": {}, "classification": {},
         "training": {t: {"best_epoch": final[t]["res"]["best_epoch"], "epochs_run": final[t]["res"]["epochs_run"],

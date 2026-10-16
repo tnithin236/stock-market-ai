@@ -62,3 +62,24 @@ def test_comparison_plot_is_written():
         _, cls, _ = build_comparison(d, "AAPL")
         out = plot_model_comparison(cls, d / "cmp.png")
         assert Path(out).exists() and Path(out).stat().st_size > 1000
+
+
+def test_test_periods_are_read_and_mismatches_are_detectable():
+    from src.evaluation.compare import read_test_periods
+    with tempfile.TemporaryDirectory() as t:
+        d = Path(t)
+        for tag, period in (("xgboost", ["2025-01-15", "2026-10-09"]), ("lstm", ["2025-01-15", "2026-10-09"]),
+                            ("transformer", ["2025-01-17", "2026-10-13"])):
+            (d / f"{tag}_results_AAPL.json").write_text(json.dumps(
+                {"test_period": period, "regression": {"test": []}, "classification": {"test": []}}))
+        periods = read_test_periods(d, "AAPL")
+    assert periods["xgboost"] == periods["lstm"] == ("2025-01-15", "2026-10-09")
+    assert len({p for p in periods.values() if p}) == 2          # mismatch is visible
+
+
+def test_old_result_files_without_a_period_report_none():
+    from src.evaluation.compare import read_test_periods
+    with tempfile.TemporaryDirectory() as t:
+        d = Path(t)
+        (d / "lstm_results_AAPL.json").write_text(json.dumps({"regression": {}, "classification": {}}))
+        assert read_test_periods(d, "AAPL") == {"lstm": None}

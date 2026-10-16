@@ -147,7 +147,8 @@ def run_xgboost(
     majority = MajorityClassBaseline().fit(tr["target_direction"])
     momentum = MomentumBaseline()
     results: Dict[str, Any] = {
-        "ticker": ticker, "chosen_features": chosen, "params": params_used, "tuning": tuning_info,
+        "ticker": ticker, "test_period": [str(te.index.min().date()), str(te.index.max().date())],
+        "chosen_features": chosen, "params": params_used, "tuning": tuning_info,
         "feature_set_comparison": comp_df.to_dict("records"), "regression": {}, "classification": {},
     }
     eval_cache = {}

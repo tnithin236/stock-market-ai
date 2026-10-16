@@ -1,7 +1,7 @@
 data:
   ticker: AAPL
   start_date: "2015-01-01"
-  end_date: null          # null = up to today
+  end_date: "2026-10-15"  # EXCLUSIVE end: freezes the dataset (last bar = 2026-10-14) so every run is reproducible; null = up to today
   interval: 1d
   raw_dir: data/raw
   processed_dir: data/processed
