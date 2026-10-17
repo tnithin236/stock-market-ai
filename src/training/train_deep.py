@@ -16,6 +16,7 @@ import pandas as pd
 from sklearn.metrics import roc_auc_score
 
 from src.config import resolve_path
+from src.evaluation.predictions import save_predictions
 from src.evaluation.permutation import permutation_importance
 from src.evaluation.reporting import classification_row, fmt, json_default, regression_row, tables
 from src.features.engineering import feature_columns
@@ -131,6 +132,7 @@ def run_deep(
     majority = MajorityClassBaseline().fit(split.train["target_direction"])
     momentum = MomentumBaseline()
     cache_eval: Dict[str, Any] = {}
+    pred_frames = []
 
     for name in ("val", "test"):
         reg_part = sup.loc[reg["data"][name].index]
@@ -142,6 +144,9 @@ def run_deep(
         clf_part = sup.loc[clf["data"][name].index]
         raw = _sigmoid(predict_array(clf["model"], clf["data"][name].X, device))
         cal = calibrator.predict(raw)
+        pred_frames.append(
+            pd.DataFrame({"split": name, "pred_return": pred_ret}, index=reg_part.index)
+            .join(pd.DataFrame({"raw_prob": raw, "cal_prob": cal}, index=clf_part.index)))
         cls_df, cms = tables([
             classification_row("always_majority", clf_part, majority.score(clf_part), majority.label, False),
             classification_row("momentum", clf_part, momentum.score(clf_part), majority.label, False),
@@ -226,6 +231,7 @@ def run_deep(
         reg["scaler"].save(models_dir / f"{ticker}_{arch}_scaler.joblib")
         joblib.dump(calibrator, models_dir / f"{ticker}_{arch}_calibrator.joblib")
         reports = Path(resolve_path(cfg["paths"].get("reports_dir", "reports")))
+        save_predictions(reports / f"predictions_{arch}_{ticker}.csv", pred_frames)
         out = reports / f"{arch}_results_{ticker}.json"
         out.write_text(json.dumps(results, indent=2, default=json_default))
         print(f"\nSaved models to {models_dir}\nSaved results to {out}")

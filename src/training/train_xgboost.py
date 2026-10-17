@@ -16,6 +16,7 @@ import pandas as pd
 from sklearn.metrics import log_loss, roc_auc_score
 
 from src.config import resolve_path
+from src.evaluation.predictions import save_predictions
 from src.evaluation.explain import gain_importance, mean_abs_contribution, tree_contributions
 from src.evaluation.reporting import classification_row as _classification_row
 from src.evaluation.reporting import fmt as _fmt
@@ -152,6 +153,7 @@ def run_xgboost(
         "feature_set_comparison": comp_df.to_dict("records"), "regression": {}, "classification": {},
     }
     eval_cache = {}
+    pred_frames = []
     for name, part in (("val", va), ("test", te)):
         pr = predict_return(reg, part[reg_cols])
         reg_rows = [_regression_row("previous_day", part, np.zeros(len(part))),
@@ -161,6 +163,8 @@ def run_xgboost(
 
         raw = predict_proba_up(clf, part[clf_cols])
         cal = calibrator.predict(raw)
+        pred_frames.append(pd.DataFrame(
+            {"split": name, "pred_return": pr, "raw_prob": raw, "cal_prob": cal}, index=part.index))
         cls_rows = [
             _classification_row("always_majority", part, majority.score(part), majority.label, False),
             _classification_row("momentum", part, momentum.score(part), majority.label, False),
@@ -263,6 +267,7 @@ def run_xgboost(
                      "best_iteration": int(clf.best_iteration), "calibration": "platt (validation)",
                      "target": "next-day direction"})
         reports = Path(resolve_path(cfg["paths"].get("reports_dir", "reports")))
+        save_predictions(reports / f"predictions_xgboost_{ticker}.csv", pred_frames)
         out = reports / f"xgboost_results_{ticker}.json"
         out.write_text(json.dumps(results, indent=2, default=_json_default))
         print(f"\nSaved models to {models_dir}\nSaved results to {out}")

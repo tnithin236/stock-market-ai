@@ -105,3 +105,16 @@ transformer:
     max_epochs: 40
   permutation:
     n_repeats: 5
+
+backtest:
+  initial_capital: 100000
+  cost_bps: 5                  # one-way cost per unit of turnover (commission + slippage), in basis points
+  execution: next_open         # next_open (signal at close t, trade at open t+1) | same_close (idealised)
+  sizing: binary               # binary (all-in / flat) | scaled (position grows with the probability edge)
+  scale: 10                    # scaled sizing: position = clip((prob - threshold) * scale, lo, 1)
+  threshold: 0.5
+  allow_short: false           # long/flat by default; shorting adds borrow costs we do not model
+  cost_sensitivity_bps: [0, 5, 10, 25]
+  random_trials: 1000          # random-signal null distribution with the same average exposure
+  risk_free_annual: 0.0
+  seed: 42

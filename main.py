@@ -1,4 +1,4 @@
-"""Project CLI. Commands: eda, features, baseline, xgboost, lstm, transformer, compare (later: backtest)."""
+"""Project CLI. Commands: eda, features, baseline, xgboost, lstm, transformer, compare, backtest."""
 import argparse
 import logging
 from pathlib import Path
@@ -141,6 +141,14 @@ def run_compare(args: argparse.Namespace) -> None:
     print(f"\nSaved {out_csv}\nSaved {fig}")
 
 
+def run_backtest_cmd(args: argparse.Namespace) -> None:
+    from src.backtesting.runner import run_backtest_study
+
+    cfg = load_config(args.config)
+    run_backtest_study(cfg, args.ticker, args.cost_bps, args.execution, args.sizing,
+                       True if args.allow_short else None, args.plot_strategy, make_plots=not args.no_plots)
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Stock Market AI project CLI")
     p.add_argument("--config", default="configs/config.yaml")
@@ -197,6 +205,16 @@ def build_parser() -> argparse.ArgumentParser:
     cp = sub.add_parser("compare", help="Compare all trained models on the test period")
     cp.add_argument("--ticker", default=None)
     cp.set_defaults(func=run_compare)
+
+    bt = sub.add_parser("backtest", help="Backtest model signals vs buy-and-hold on the test period")
+    bt.add_argument("--ticker", default=None)
+    bt.add_argument("--cost-bps", type=float, default=None, help="One-way cost in basis points")
+    bt.add_argument("--execution", choices=["next_open", "same_close"], default=None)
+    bt.add_argument("--sizing", choices=["binary", "scaled"], default=None)
+    bt.add_argument("--allow-short", action="store_true", help="Allow short positions (no borrow cost modelled)")
+    bt.add_argument("--plot-strategy", default="xgboost_clf", help="Strategy shown in the BUY/SELL signal plot")
+    bt.add_argument("--no-plots", action="store_true")
+    bt.set_defaults(func=run_backtest_cmd)
     return p
 
 
