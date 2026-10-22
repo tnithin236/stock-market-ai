@@ -1,0 +1,37 @@
+# Usage:   docker compose up --build        (API on :8000, dashboard on :8501)
+# First time with no trained models?  AUTO_TRAIN=1 docker compose up --build   (PowerShell: $env:AUTO_TRAIN=1)
+services:
+  api:
+    build: .
+    image: stock-market-ai:latest
+    command: ["sh", "-c", "python -m src.serving.bootstrap && uvicorn api.main:app --host 0.0.0.0 --port 8000"]
+    ports:
+      - "8000:8000"
+    environment:
+      - AUTO_TRAIN=${AUTO_TRAIN:-0}
+      - AUTO_TRAIN_TICKER=${AUTO_TRAIN_TICKER:-AAPL}
+    volumes:
+      - ./models:/app/models
+      - ./reports:/app/reports
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 120s
+
+  dashboard:
+    image: stock-market-ai:latest
+    command: ["sh", "-c", "streamlit run app/streamlit_app.py --server.port=8501 --server.address=0.0.0.0 --server.headless=true --browser.gatherUsageStats=false"]
+    ports:
+      - "8501:8501"
+    environment:
+      - STOCKAI_SYNTHETIC=${STOCKAI_SYNTHETIC:-0}
+    volumes:
+      - ./models:/app/models
+      - ./reports:/app/reports
+      - ./data:/app/data
+    depends_on:
+      api:
+        condition: service_healthy

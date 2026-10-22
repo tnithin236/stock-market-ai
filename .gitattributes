@@ -1,0 +1,7 @@
+# Keep LF line endings for files that run inside Linux containers / CI
+* text=auto
+Dockerfile text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sh text eol=lf
+*.py text eol=lf

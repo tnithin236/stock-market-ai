@@ -1,0 +1,15 @@
+.venv
+.git
+.github
+__pycache__
+*.pyc
+.pytest_cache
+.vscode
+.idea
+notebooks
+tests
+docs
+data
+models
+reports
+*.zip
