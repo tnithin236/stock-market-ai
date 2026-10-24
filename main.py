@@ -1,4 +1,4 @@
-"""Project CLI. Commands: eda, features, baseline, xgboost, lstm, transformer, compare, backtest."""
+"""Project CLI. Commands: eda, features, baseline, xgboost, lstm, transformer, compare, backtest, walkforward."""
 import argparse
 import logging
 from pathlib import Path
@@ -149,6 +149,13 @@ def run_backtest_cmd(args: argparse.Namespace) -> None:
                        True if args.allow_short else None, args.plot_strategy, make_plots=not args.no_plots)
 
 
+def run_walkforward_cmd(args: argparse.Namespace) -> None:
+    from src.training.walk_forward import run_walk_forward
+
+    cfg = load_config(args.config)
+    run_walk_forward(cfg, args.ticker, args.initial_days, args.test_days, make_plots=not args.no_plots)
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Stock Market AI project CLI")
     p.add_argument("--config", default="configs/config.yaml")
@@ -215,6 +222,13 @@ def build_parser() -> argparse.ArgumentParser:
     bt.add_argument("--plot-strategy", default="xgboost_clf", help="Strategy shown in the BUY/SELL signal plot")
     bt.add_argument("--no-plots", action="store_true")
     bt.set_defaults(func=run_backtest_cmd)
+
+    wf = sub.add_parser("walkforward", help="Walk-forward (expanding window) validation of XGBoost")
+    wf.add_argument("--ticker", default=None)
+    wf.add_argument("--initial-days", type=int, default=None, help="Rows in the first training window")
+    wf.add_argument("--test-days", type=int, default=None, help="Rows per out-of-sample block")
+    wf.add_argument("--no-plots", action="store_true")
+    wf.set_defaults(func=run_walkforward_cmd)
     return p
 
 

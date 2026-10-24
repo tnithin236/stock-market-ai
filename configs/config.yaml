@@ -118,3 +118,10 @@ backtest:
   random_trials: 1000          # random-signal null distribution with the same average exposure
   risk_free_annual: 0.0
   seed: 42
+
+walk_forward:
+  initial_train_days: 1008     # ~4 years of trading days before the first test block
+  test_days: 126               # ~6 months per out-of-sample block; the model is retrained for each block
+  gap: 1
+  val_frac: 0.15               # tail of each training window used for early stopping (chronological)
+  feature_set: scale_free      # scale_free | all

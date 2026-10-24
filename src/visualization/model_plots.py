@@ -135,3 +135,30 @@ def plot_model_comparison(cls: pd.DataFrame, path, title: str = "Test-set model 
         ax.invert_yaxis()
     fig.suptitle(title)
     return _save(fig, path)
+
+
+def plot_fold_auc(folds: pd.DataFrame, path) -> str:
+    """AUC per walk-forward block; 0.5 is chance."""
+    fig, ax = plt.subplots(figsize=(9, 4))
+    labels = [str(s)[:7] for s in folds["test_start"]]
+    colors = ["#16a34a" if v > 0.5 else "#dc2626" for v in folds["auc"].fillna(0.5)]
+    ax.bar(labels, folds["auc"], color=colors)
+    ax.axhline(0.5, color="k", ls=":", lw=1.2)
+    ax.set_ylim(min(0.35, float(folds["auc"].min()) - 0.02), max(0.65, float(folds["auc"].max()) + 0.02))
+    ax.set_ylabel("ROC-AUC")
+    ax.set_title("Walk-forward: AUC in each out-of-sample block (dotted = chance)")
+    plt.setp(ax.get_xticklabels(), rotation=60, ha="right")
+    return _save(fig, path)
+
+
+def plot_yearly_accuracy(years: pd.DataFrame, path) -> str:
+    fig, ax = plt.subplots(figsize=(8, 4))
+    x = np.arange(len(years))
+    ax.bar(x - 0.2, years["accuracy"], width=0.4, label="XGBoost", color="#3b82f6")
+    ax.bar(x + 0.2, years["always_up_accuracy"], width=0.4, label="Always UP", color="#cbd5e1")
+    ax.set_xticks(x, [str(y) for y in years.index])
+    ax.set_ylim(0.35, 0.7)
+    ax.set_ylabel("Accuracy")
+    ax.set_title("Walk-forward accuracy by calendar year")
+    ax.legend()
+    return _save(fig, path)
