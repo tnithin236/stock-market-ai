@@ -1,5 +1,6 @@
 """Turn model outputs into target positions (fraction of equity, decided at the close of day t)."""
 import numpy as np
+import pandas as pd
 
 
 def _floor(allow_short: bool) -> float:
@@ -24,3 +25,13 @@ def positions_from_return(pred_return, allow_short: bool = False) -> np.ndarray:
 
 def buy_and_hold(n: int) -> np.ndarray:
     return np.ones(n)
+
+
+def vol_filter_positions(vol: pd.Series, min_periods: int = 250) -> pd.Series:
+    """Long when recent realised volatility is at or below its own historical median, flat otherwise.
+
+    Fully causal: the median uses only data up to each day (expanding window). A direction-free baseline that
+    simply sits out turbulent periods, used to check whether an ML strategy is merely doing volatility timing.
+    """
+    threshold = vol.expanding(min_periods=min_periods).median()
+    return (~(vol > threshold)).astype(float)          # NaN comparisons are False -> long during warm-up

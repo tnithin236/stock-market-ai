@@ -365,24 +365,72 @@
       "exposure_%": 89.73544973544973,
       "turnover": 201.0,
       "cost_drag_%": 10.05
+    },
+    {
+      "index": "vol_filter",
+      "final_value": 318046.3367203452,
+      "total_return_%": 218.0463367203452,
+      "CAGR_%": 16.680617729643,
+      "volatility_%": 14.907445313894627,
+      "sharpe": 1.1094099885344766,
+      "sortino": 0.7834098454124865,
+      "max_drawdown_%": -19.73875918028545,
+      "calmar": 0.8450692152069599,
+      "win_rate_days_%": 54.3424317617866,
+      "n_trades": 54.0,
+      "trade_win_rate_%": 61.111111111111114,
+      "exposure_%": 42.645502645502646,
+      "turnover": 107.0,
+      "cost_drag_%": 5.35
     }
   ],
   "null": [
     {
       "index": "xgb_wf_clf",
       "sharpe": 1.0420720616940247,
-      "null_median_sharpe": 0.3944225830883523,
-      "beats_random_%": 99.1,
-      "p_value": 0.009,
-      "p_bonferroni": 0.018
+      "iid_beats_%": 99.1,
+      "iid_p": 0.009,
+      "shift_beats_%": 97.5,
+      "shift_p": 0.025,
+      "shift_p_bonferroni": 0.07500000000000001
     },
     {
       "index": "xgb_wf_reg",
       "sharpe": 1.0999325620967733,
-      "null_median_sharpe": 0.8664182325542898,
-      "beats_random_%": 97.2,
-      "p_value": 0.028,
-      "p_bonferroni": 0.056
+      "iid_beats_%": 97.2,
+      "iid_p": 0.028,
+      "shift_beats_%": 94.0,
+      "shift_p": 0.06,
+      "shift_p_bonferroni": 0.18
+    },
+    {
+      "index": "vol_filter",
+      "sharpe": 1.1094099885344766,
+      "iid_beats_%": 99.6,
+      "iid_p": 0.004,
+      "shift_beats_%": 97.6,
+      "shift_p": 0.024,
+      "shift_p_bonferroni": 0.07200000000000001
+    }
+  ],
+  "volatility_diagnostic": [
+    {
+      "index": "xgb_wf_clf",
+      "days_long_%": 47.56613756613757,
+      "avg_vol_when_long_%": 28.587075604270915,
+      "avg_vol_when_flat_%": 26.57442325316191
+    },
+    {
+      "index": "xgb_wf_reg",
+      "days_long_%": 89.73544973544973,
+      "avg_vol_when_long_%": 26.502147950731864,
+      "avg_vol_when_flat_%": 36.53294581279256
+    },
+    {
+      "index": "vol_filter",
+      "days_long_%": 42.645502645502646,
+      "avg_vol_when_long_%": 18.335482245105542,
+      "avg_vol_when_flat_%": 34.36959014997042
     }
   ]
 }

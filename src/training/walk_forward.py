@@ -17,8 +17,8 @@ from sklearn.metrics import roc_auc_score
 
 from src.backtesting.engine import build_market_data, run_backtest
 from src.backtesting.metrics import performance_metrics
-from src.backtesting.random_baseline import null_summary, random_null
-from src.backtesting.signals import buy_and_hold, positions_from_prob, positions_from_return
+from src.backtesting.random_baseline import null_summary, random_null, shift_null
+from src.backtesting.signals import buy_and_hold, positions_from_prob, positions_from_return, vol_filter_positions
 from src.config import resolve_path
 from src.evaluation.reporting import classification_row, fmt, json_default, regression_row, tables
 from src.features.engineering import feature_columns
@@ -156,24 +156,46 @@ def run_walk_forward(
     ic, cost = float(bcfg.get("initial_capital", 100000)), float(bcfg.get("cost_bps", 5))
     execution = bcfg.get("execution", "next_open")
     market = build_market_data(full, frame.index)
+    vol_pos = vol_filter_positions(full["vol_20"]).reindex(frame.index).to_numpy()
     strategies = {"buy_and_hold": buy_and_hold(len(frame)),
                   "xgb_wf_clf": positions_from_prob(frame["raw_prob"].to_numpy()),
-                  "xgb_wf_reg": positions_from_return(frame["pred_return"].to_numpy())}
+                  "xgb_wf_reg": positions_from_return(frame["pred_return"].to_numpy()),
+                  "vol_filter": vol_pos}
     curves = {n: run_backtest(market, p, ic, cost, execution) for n, p in strategies.items()}
     metrics = pd.DataFrame({n: performance_metrics(c, ic) for n, c in curves.items()}).T
     print(f"\n=== Pooled walk-forward backtest (${ic:,.0f}, {cost} bps, {execution}) ===")
     show = metrics[["total_return_%", "CAGR_%", "sharpe", "max_drawdown_%", "n_trades", "exposure_%", "cost_drag_%"]]
     print(show.round(2).to_string())
+
+    tested = [n for n in strategies if n != "buy_and_hold"]
     null = {}
-    for n in ("xgb_wf_clf", "xgb_wf_reg"):
-        sh, _ = random_null(market, float(np.mean(np.abs(strategies[n]))), 1000, cost, execution, False, 42)
-        null[n] = {"sharpe": metrics.loc[n, "sharpe"], **null_summary(metrics.loc[n, "sharpe"], sh)}
+    for n in tested:
+        pos = strategies[n]
+        iid, _ = random_null(market, float(np.mean(np.abs(pos))), 1000, cost, execution, False, 42)
+        shifted = shift_null(market, pos, 1000, cost, execution, 42)
+        sh = float(metrics.loc[n, "sharpe"])
+        a, b = null_summary(sh, iid), null_summary(sh, shifted)
+        null[n] = {"sharpe": sh, "iid_beats_%": a["beats_random_%"], "iid_p": a["p_value"],
+                   "shift_beats_%": b["beats_random_%"], "shift_p": b["p_value"]}
     null_df = pd.DataFrame(null).T
-    null_df["p_bonferroni"] = (null_df["p_value"] * len(null_df)).clip(upper=1.0)
-    print("\nBetter than luck? (1000 random strategies with the same exposure)")
+    null_df["shift_p_bonferroni"] = (null_df["shift_p"] * len(null_df)).clip(upper=1.0)
+    print("\nBetter than luck? iid = random daily positions with the same exposure; shift = the strategy's OWN "
+          "positions circularly shifted (same exposure, same trades and costs, alignment broken)")
     print(null_df.round(3).to_string())
+
+    vol = (full["vol_20"].reindex(frame.index) * np.sqrt(252) * 100)
+    diag = {}
+    for n in tested:
+        on = strategies[n] > 0
+        diag[n] = {"days_long_%": float(on.mean() * 100), "avg_vol_when_long_%": float(vol[on].mean()),
+                   "avg_vol_when_flat_%": float(vol[~on].mean()) if (~on).any() else float("nan")}
+    diag_df = pd.DataFrame(diag).T
+    print("\nDoes the strategy just sit out volatile periods? (annualised 20-day volatility, %)")
+    print(diag_df.round(2).to_string())
+    print("\nIf the ML strategy matches the direction-free vol_filter on Sharpe/drawdown, and is invested mainly when "
+          "volatility is low, its benefit is volatility timing, not direction prediction.")
     print("\nExperimental research, not financial advice. Walk-forward is a stronger test than one split, but it is "
-          "still one asset, with simplified costs.")
+          "still one asset, with simplified costs, and we have now looked at many strategies on the same data.")
 
     results = {"ticker": ticker, "config": wc, "n_folds": int(len(folds)),
                "oos_period": [str(frame.index.min().date()), str(frame.index.max().date())],
@@ -181,7 +203,8 @@ def run_walk_forward(
                "yearly": years.reset_index().to_dict("records"),
                "classification": cls_df.reset_index().to_dict("records"),
                "regression": reg_df.reset_index().to_dict("records"),
-               "backtest": metrics.reset_index().to_dict("records"), "null": null_df.reset_index().to_dict("records")}
+               "backtest": metrics.reset_index().to_dict("records"), "null": null_df.reset_index().to_dict("records"),
+               "volatility_diagnostic": diag_df.reset_index().to_dict("records")}
     figures = []
     if make_plots:
         fig_dir = Path(resolve_path(cfg["paths"]["figures_dir"]))

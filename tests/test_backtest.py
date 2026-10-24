@@ -149,3 +149,27 @@ def test_prediction_files_roundtrip_and_filter_by_split():
         save_predictions(path, [f1, f2])
         test = load_predictions(path, "test")
     assert list(test.index) == list(idx[2:]) and np.allclose(test["raw_prob"], 0.6)
+
+
+def test_shift_null_keeps_exposure_and_breaks_alignment():
+    from src.backtesting.random_baseline import shift_null
+    m = _market(ON * 12, ID * 12)                                   # 60 days
+    pos = np.tile([1.0, 1.0, 1.0, 0.0, 0.0, 1.0], 10)
+    sh = shift_null(m, pos, n_trials=200, cost_bps=5.0, execution="next_open", seed=3)
+    assert sh.shape == (200,) and np.isfinite(sh).all()
+    ones = shift_null(m, np.ones(60), 50, 0.0, "same_close", seed=1)   # constant position: shifting changes nothing
+    bh = float(sharpe_from_returns(run_backtest(m, np.ones(60), 1.0, 0.0, "same_close")["net_ret"]))
+    assert np.allclose(ones, bh)
+    with pytest.raises(ValueError):
+        shift_null(m, pos[:30], 10, 5.0, "next_open", seed=1)
+
+
+def test_vol_filter_is_causal_and_sits_out_high_volatility():
+    from src.backtesting.signals import vol_filter_positions
+    rng = np.random.default_rng(0)
+    vol = pd.Series(np.abs(rng.normal(0.01, 0.004, 600)), index=pd.bdate_range("2020-01-01", periods=600))
+    full = vol_filter_positions(vol)
+    pd.testing.assert_series_equal(full.iloc[:400], vol_filter_positions(vol.iloc[:400]))   # no future information
+    assert set(full.unique()) <= {0.0, 1.0}
+    hi, lo = vol.iloc[300:][full.iloc[300:] == 0], vol.iloc[300:][full.iloc[300:] == 1]
+    assert hi.mean() > lo.mean()

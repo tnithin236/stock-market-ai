@@ -26,3 +26,21 @@ def null_summary(strategy_sharpe: float, null_sharpe: np.ndarray) -> dict:
         "beats_random_%": float(np.mean(null_sharpe < strategy_sharpe) * 100),
         "p_value": float(np.mean(null_sharpe >= strategy_sharpe)),   # one-sided
     }
+
+
+def shift_null(market: MarketData, positions, n_trials: int, cost_bps: float, execution: str, seed: int,
+               rf_annual: float = 0.0, min_shift: int = 21) -> np.ndarray:
+    """Sharpe of the SAME position series circularly shifted by random amounts.
+
+    Unlike i.i.d. random positions, this keeps the strategy's exposure, number of trades and holding periods
+    (so trading costs are matched) and only breaks the alignment with the returns it is trying to time.
+    """
+    pos = np.asarray(positions, dtype=float)
+    T = len(pos)
+    if T <= 2 * min_shift + 1:
+        raise ValueError("Not enough days for a shift test.")
+    rng = np.random.default_rng(seed)
+    shifts = rng.integers(min_shift, T - min_shift, size=n_trials)
+    matrix = np.stack([np.roll(pos, int(k)) for k in shifts])
+    net, *_ = net_returns(matrix, market, cost_bps, execution)
+    return sharpe_from_returns(net, rf_annual)
