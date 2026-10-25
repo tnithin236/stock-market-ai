@@ -125,3 +125,7 @@ walk_forward:
   gap: 1
   val_frac: 0.15               # tail of each training window used for early stopping (chronological)
   feature_set: scale_free      # scale_free | all
+
+multi_ticker:
+  tickers: [AAPL, MSFT, AMZN, GOOGL, JPM, XOM, JNJ, WMT, KO, PG]
+  alpha: 0.05

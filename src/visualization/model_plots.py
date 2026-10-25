@@ -162,3 +162,20 @@ def plot_yearly_accuracy(years: pd.DataFrame, path) -> str:
     ax.set_title("Walk-forward accuracy by calendar year")
     ax.legend()
     return _save(fig, path)
+
+
+def plot_multi_ticker_auc(df: pd.DataFrame, alpha: float, path) -> str:
+    """AUC with 95% interval per ticker. Green = significant after Holm correction, orange = only nominally."""
+    d = df.sort_values("auc")
+    fig, ax = plt.subplots(figsize=(7.5, 0.45 * len(d) + 1.8))
+    y = np.arange(len(d))
+    colors = ["#16a34a" if p < alpha else ("#f59e0b" if q < alpha else "#64748b")
+              for p, q in zip(d["auc_p_holm"], d["auc_p"])]
+    err = np.vstack([d["auc"] - d["auc_lo"], d["auc_hi"] - d["auc"]])
+    ax.errorbar(d["auc"], y, xerr=err, fmt="none", ecolor="#cbd5e1", capsize=3, zorder=1)
+    ax.scatter(d["auc"], y, c=colors, s=45, zorder=2)
+    ax.axvline(0.5, color="k", ls=":", lw=1.2)
+    ax.set_yticks(y, list(d.index))
+    ax.set_xlabel("Walk-forward ROC-AUC (95% interval); dotted line = chance")
+    ax.set_title("Same experiment on many tickers\n(grey = not significant, orange = nominal only, green = survives correction)")
+    return _save(fig, path)

@@ -1,4 +1,4 @@
-"""Project CLI. Commands: eda, features, baseline, xgboost, lstm, transformer, compare, backtest, walkforward."""
+"""Project CLI. Commands: eda, features, baseline, xgboost, lstm, transformer, compare, backtest, walkforward, multiticker."""
 import argparse
 import logging
 from pathlib import Path
@@ -156,6 +156,13 @@ def run_walkforward_cmd(args: argparse.Namespace) -> None:
     run_walk_forward(cfg, args.ticker, args.initial_days, args.test_days, make_plots=not args.no_plots)
 
 
+def run_multiticker_cmd(args: argparse.Namespace) -> None:
+    from src.training.multi_ticker import run_multi_ticker
+
+    cfg = load_config(args.config)
+    run_multi_ticker(cfg, args.tickers, make_plots=not args.no_plots)
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Stock Market AI project CLI")
     p.add_argument("--config", default="configs/config.yaml")
@@ -229,6 +236,11 @@ def build_parser() -> argparse.ArgumentParser:
     wf.add_argument("--test-days", type=int, default=None, help="Rows per out-of-sample block")
     wf.add_argument("--no-plots", action="store_true")
     wf.set_defaults(func=run_walkforward_cmd)
+
+    mt = sub.add_parser("multiticker", help="Walk-forward XGBoost on many tickers with multiple-testing correction")
+    mt.add_argument("--tickers", nargs="+", default=None, help="e.g. AAPL MSFT AMZN (default: list in config)")
+    mt.add_argument("--no-plots", action="store_true")
+    mt.set_defaults(func=run_multiticker_cmd)
     return p
 
 
