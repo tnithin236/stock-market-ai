@@ -9,7 +9,7 @@ out loud in 60-90 seconds each. Be upfront that the project's finding is a *nega
 Transformer. The emphasis was evaluating honestly: chronological splits, train-only scaling, confidence intervals,
 significance tests and a cost-aware backtest. The result was that none of the models significantly beat naive baselines -
 best test AUC was 0.546 with an interval that includes 0.5 - and after costs no strategy beat buy-and-hold. I also built a
-FastAPI service, a Streamlit dashboard, Docker and CI, with about 130 tests. The main takeaway for me is how easy it is to
+FastAPI service, a Streamlit dashboard, Docker and CI, with 139 tests. The main takeaway for me is how easy it is to
 fool yourself with time-series ML and how to build safeguards against that."
 
 ## 2. Questions and model answers
@@ -156,6 +156,31 @@ Walk-forward validation across many years and tickers, a point-in-time universe,
 and portfolio-level evaluation. A significant edge that survives costs, multiple-testing correction and walk-forward testing
 would change my conclusion.
 
+### Walk-forward and statistical honesty (added after the walk-forward study)
+
+**Q31. What is walk-forward validation and what did it show?**
+Train on all data before a block, predict the next block (126 days), then roll forward and retrain. I used 15 blocks covering
+1,890 days from 2019 to 2026, with default XGBoost parameters. Pooled AUC was 0.514 (95% CI [0.487, 0.538]); AUC exceeded 0.5 in
+9 of 15 blocks (sign test p = 0.30). The two best blocks, both in 2020, scored about 0.61; the other 13 averaged about 0.50, so
+the pooled "edge" is a regime effect, not a stable skill.
+
+**Q32. Your backtest looked significant against random strategies but your direction metrics did not. How did you reconcile it?**
+Two things. First, my original random-strategy null flipped a coin daily, so it paid far more trading costs than a strategy with
+persistent positions; beating it partly measured "trades less". I replaced it with a shifted-position null that keeps exposure,
+trades and costs identical. Second, I added a direction-free baseline (hold only when 20-day volatility is below its historical
+median). It reached Sharpe 1.11 vs 1.04 for the ML classifier and also "passed" the luck test (p = 0.024), which shows that passing
+a luck test is not evidence of directional skill - it can just reflect de-risking.
+
+**Q33. How do you avoid fooling yourself when you try many strategies?**
+Correct for multiple comparisons (Bonferroni), prefer pre-specified comparisons, report every strategy tried, use stricter nulls,
+look for consistency across blocks rather than a pooled number, and be wary of choices made after seeing results. After
+Bonferroni for three strategies the walk-forward p-values were 0.075, 0.18 and 0.072; with the ~10 strategies tried across the
+project, none is convincing.
+
+**Q34. Why did the classifier's trades cost so much?**
+It made 332 trades over 1,890 days. At 5 bps per unit of turnover that is about 33% of capital over the period, which is a large
+part of why its total return (+358%) trails buy-and-hold (+578%) even though its Sharpe and drawdown look good.
+
 ## 3. Bugs and lessons (great "tell me about a challenge" stories)
 
 1. **Partial bar leakage:** a download during market hours included an unfinished day; fixed in the loader.
@@ -163,6 +188,7 @@ would change my conclusion.
 3. **Calibrator flipped model direction:** AUC "improved" from 0.48 to 0.52 via a negative slope; now guarded.
 4. **Feature importance counted discarded trees:** SHAP and gain disagreed; fixed to use only the best iteration.
 5. **Module named `*_test.py`:** pytest collected it as a test; renamed and set `testpaths`.
+6. **Biased luck test:** random daily positions paid more costs than a persistent strategy, flattering it; replaced by a turnover-matched shifted-position null and a direction-free volatility-filter baseline.
 
 ## 4. Technical concepts you should be able to explain
 

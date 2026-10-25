@@ -15,6 +15,8 @@ An end-to-end, production-style machine-learning project that forecasts next-day
 * **Regression models only learned the average drift.** RMSE relative to a "tomorrow = today" forecast was 1.0019 (XGBoost), 1.0029 (LSTM) and 1.0052 (Transformer); none was below 1.0.
 * **More complex did not mean better.** Out-of-sample error rose slightly from XGBoost to LSTM to Transformer, the pattern expected when extra capacity fits noise.
 * **The backtest agrees.** After 5 bps costs, buy-and-hold returned +54.1% (Sharpe 0.99). The best ML strategy (XGBoost classifier) returned +40.6% (Sharpe 0.94) while invested only half the time, and was indistinguishable from random strategies with the same exposure (p = 0.16; Bonferroni-corrected p = 1.0). The LSTM and Transformer classifiers lost money (-21.7%, -10.6%).
+* **Walk-forward validation agrees.** Re-training every 6 months across 15 out-of-sample blocks (1,890 days, 2019-2026) gave a pooled AUC of 0.514 (95% interval [0.487, 0.538]), above 0.5 in only 9 of 15 blocks (sign-test p = 0.30). The whole pooled edge comes from two consecutive 2020 blocks (AUC about 0.61 each); the other 13 average about 0.50.
+* **Apparent backtest gains are not directional skill.** A direction-free rule ("hold only when 20-day volatility is below its historical median") reached a higher Sharpe (1.11) than the best ML classifier (1.04) with a similar drawdown, and no strategy is significant after correcting for the number of strategies tried.
 * **The value of the project is the methodology**: leakage prevention, honest evaluation, significance testing and a reproducible, tested, deployable system - not a trading edge.
 
 ## Problem statement
@@ -119,6 +121,38 @@ Costs decide high-turnover strategies: the momentum rule loses 10.95% of capital
 ![Equity curves](docs/images/backtest_equity.png)
 ![Drawdowns](docs/images/backtest_drawdown.png)
 
+## Walk-forward validation (XGBoost)
+
+A single test window can look better or worse than reality, so XGBoost (default parameters, no tuning) was also evaluated with an **expanding-window walk-forward**: train on everything before a block (the last 15% of that window, in time order, is used for early stopping), predict the next 126 trading days, then roll forward and retrain. This gives **15 out-of-sample blocks and 1,890 days (2019-03-19 to 2026-10-13)** across the 2020 crash, the 2022 bear market and the recent rally.
+
+| Measure | Result |
+|---|---|
+| Pooled accuracy | 0.514 [0.491, 0.536] vs always-UP 0.534 [0.512, 0.557] (p = 0.97) |
+| Pooled ROC-AUC | 0.514 [0.487, 0.538] |
+| Blocks with AUC > 0.5 | 9 of 15 (sign-test p = 0.30), mean block AUC 0.515 |
+| AUC excluding the two 2020 blocks | about 0.50 (the two 2020 blocks scored about 0.61 each) |
+| RMSE vs previous-day forecast | 1.0018 (out-of-sample R-squared on returns 0.0013) |
+
+![Walk-forward AUC by block](docs/images/wf_fold_auc.png)
+
+**Pooled walk-forward backtest** ($100,000, 5 bps, signal at the close, trade at the next open):
+
+| Strategy | Return | CAGR | Sharpe | Max drawdown | Trades | Exposure |
+|---|---|---|---|---|---|---|
+| Buy-and-hold | +577.9% | 29.1% | 1.00 | -36.2% | 1 | 100% |
+| XGBoost classifier | +357.7% | 22.5% | 1.04 | -18.1% | 332 | 48% |
+| XGBoost regressor | +625.6% | 30.2% | 1.10 | -36.7% | 101 | 90% |
+| Direction-free volatility filter | +218.1% | 16.7% | 1.11 | -19.7% | 54 | 43% |
+
+**What the diagnostics show.**
+
+* The **volatility filter** has no model and no direction signal, yet matches or beats the ML strategies' Sharpe and drawdown. It sits out turbulent periods (average annualised volatility 18% when long vs 34% when flat).
+* The **classifier does not** show that pattern (28.6% when long vs 26.6% when flat), so volatility timing does not explain its result; its benefit is concentrated in the 2020 blocks and is not robust. Its 332 trades cost 33% of capital over the period, which is why its total return trails buy-and-hold.
+* The **regressor** is mostly long (90%) and avoids high-volatility days (26.5% when long vs 36.5% when flat): de-risking, not direction prediction.
+* **Luck tests.** An i.i.d. random-position null flatters any strategy that trades less, so a stricter **shifted-position null** is also used (the strategy's own positions circularly shifted: same exposure, same trades and costs, alignment broken). Even the model-free volatility filter passes it (p = 0.024), showing that "better than luck" is not evidence of directional skill. After Bonferroni correction for the three strategies compared, no p-value is below 0.05 (0.075, 0.18, 0.072), and many more strategies were examined across the project, which weakens any claim further.
+
+![Walk-forward equity curves](docs/images/wf_equity.png)
+
 ## Screenshots
 
 | Dashboard: prediction tab | Dashboard: backtest tab |
@@ -153,6 +187,7 @@ python main.py lstm [--tune]            # LSTM
 python main.py transformer [--tune]     # Transformer
 python main.py compare                  # side-by-side test-period comparison + significance verdict
 python main.py backtest [--cost-bps 5]  # cost-aware backtest vs buy-and-hold
+python main.py walkforward              # expanding-window walk-forward validation + diagnostics
 uvicorn api.main:app --reload           # API   -> http://127.0.0.1:8000/docs
 streamlit run app/streamlit_app.py      # UI    -> http://localhost:8501
 ```
@@ -195,7 +230,7 @@ The image uses CPU-only PyTorch, runs as a non-root user and mounts `models/`, `
 
 ## Testing and CI
 
-About 130 automated tests cover data loading and validation, feature causality, splitting and scaling leakage, metrics and statistics, sequence building, model training loops, inference parity with training, the backtest engine (hand-computed expectations and look-ahead checks), the service layer, the API (`TestClient`), the dashboard (`AppTest`) and the Docker/CI files. GitHub Actions runs the tests and builds the image on every push.
+139 automated tests cover data loading and validation, feature causality, splitting and scaling leakage, metrics and statistics, sequence building, model training loops, inference parity with training, the backtest engine (hand-computed expectations and look-ahead checks), the service layer, the API (`TestClient`), the dashboard (`AppTest`) and the Docker/CI files. GitHub Actions runs the tests and builds the image on every push.
 
 ## Project structure
 
@@ -224,8 +259,8 @@ stock-market-ai/
 
 * **Single asset, single market regime for testing.** Results are for AAPL; the test window is one ~21-month bull market. Other tickers or periods may differ (an MSFT model trained through the API also showed no edge: test AUC 0.465).
 * **Survivorship bias.** AAPL is a long-term survivor, so any conclusion about the strategy class is flattered; a real study would use a point-in-time universe including delisted stocks.
-* **One train/validation/test split.** Walk-forward validation across many periods would give a more robust estimate.
-* **Small effective sample.** About 436 test days means wide intervals; 1-2 point differences are noise. The bootstrap intervals assume independent days and are slightly optimistic.
+* **Walk-forward covers XGBoost only.** The neural models were evaluated on one train/validation/test split; re-training them walk-forward would be slow on a laptop and was not done.
+* **Small effective sample and many comparisons.** About 436 single-split test days (1,890 walk-forward days) still give wide intervals, and many strategies were examined on overlapping data, which inflates the chance of a lucky-looking result (hence Bonferroni correction). Bootstrap intervals assume independent days and are slightly optimistic.
 * **Non-stationarity and regime changes.** Relationships learned in 2015-2023 may not hold later, which is the likely reason the neural classifiers scored below chance on the test period.
 * **Simplified trading model.** Fixed basis-point costs, no market impact, taxes, borrow costs, dividends handling beyond adjusted prices, or position limits; long/flat only by default.
 * **Technical data only.** No fundamentals, news or alternative data.
@@ -233,13 +268,13 @@ stock-market-ai/
 
 ## Future improvements
 
-Walk-forward validation and rolling re-training; multi-stock and cross-sectional models with portfolio optimisation; news sentiment (FinBERT) and LLM-based news analysis; fundamentals and alternative data; Temporal Fusion Transformer; ensembles; reinforcement-learning for position sizing; a real-time data pipeline; MLflow experiment tracking; automated CD to a cloud platform; authentication, rate limiting and monitoring for the API.
+Walk-forward validation for the neural models, multi-ticker and point-in-time-universe studies; multi-stock and cross-sectional models with portfolio optimisation; news sentiment (FinBERT) and LLM-based news analysis; fundamentals and alternative data; Temporal Fusion Transformer; ensembles; reinforcement-learning for position sizing; a real-time data pipeline; MLflow experiment tracking; automated CD to a cloud platform; authentication, rate limiting and monitoring for the API.
 
 ## Reproducing the results
 
 ```bash
 python main.py xgboost && python main.py lstm && python main.py transformer
-python main.py compare && python main.py backtest
+python main.py compare && python main.py backtest && python main.py walkforward
 ```
 
 The end date is frozen in `configs/config.yaml` (`2026-10-15`, exclusive). Results may differ slightly across operating systems and library versions.
