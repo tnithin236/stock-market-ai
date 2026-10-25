@@ -17,6 +17,7 @@ An end-to-end, production-style machine-learning project that forecasts next-day
 * **The backtest agrees.** After 5 bps costs, buy-and-hold returned +54.1% (Sharpe 0.99). The best ML strategy (XGBoost classifier) returned +40.6% (Sharpe 0.94) while invested only half the time, and was indistinguishable from random strategies with the same exposure (p = 0.16; Bonferroni-corrected p = 1.0). The LSTM and Transformer classifiers lost money (-21.7%, -10.6%).
 * **Walk-forward validation agrees.** Re-training every 6 months across 15 out-of-sample blocks (1,890 days, 2019-2026) gave a pooled AUC of 0.514 (95% interval [0.487, 0.538]), above 0.5 in only 9 of 15 blocks (sign-test p = 0.30). The whole pooled edge comes from two consecutive 2020 blocks (AUC about 0.61 each); the other 13 average about 0.50.
 * **Apparent backtest gains are not directional skill.** A direction-free rule ("hold only when 20-day volatility is below its historical median") reached a higher Sharpe (1.11) than the best ML classifier (1.04) with a similar drawdown, and no strategy is significant after correcting for the number of strategies tried.
+* **It is not just AAPL.** The same walk-forward experiment on 10 liquid US stocks gave a mean AUC of 0.495; 0 of 10 were significant at 0.05 (about 0.5 would be expected by chance alone), and 0 after Holm-Bonferroni or FDR correction. The ML long/flat strategy had a higher Sharpe than buy-and-hold on only 1 of 10 tickers (AAPL, the one examined most).
 * **The value of the project is the methodology**: leakage prevention, honest evaluation, significance testing and a reproducible, tested, deployable system - not a trading edge.
 
 ## Problem statement
@@ -153,6 +154,32 @@ A single test window can look better or worse than reality, so XGBoost (default 
 
 ![Walk-forward equity curves](docs/images/wf_equity.png)
 
+## Robustness across tickers (XGBoost walk-forward)
+
+Everything above is AAPL, the ticker examined most, so the same walk-forward experiment (15 retrained blocks, 1,890 out-of-sample days each, default parameters, no tuning) was repeated on **10 liquid US stocks**. With ten tickers and alpha = 0.05, about 0.5 "significant" results are expected by luck alone.
+
+| Ticker | AUC (95% CI) | Blocks with AUC > 0.5 | Strategy Sharpe | Buy-and-hold Sharpe | Strategy return | Buy-and-hold return |
+|---|---|---|---|---|---|---|
+| AAPL | 0.514 [0.486, 0.536] | 9 / 15 | 1.04 | 1.00 | +358% | +578% |
+| MSFT | 0.504 [0.477, 0.528] | 9 / 15 | 0.52 | 0.82 | +93% | +335% |
+| AMZN | 0.494 [0.470, 0.522] | 8 / 15 | 0.40 | 0.55 | +70% | +164% |
+| GOOGL | 0.483 [0.457, 0.510] | 8 / 15 | 0.71 | 0.90 | +166% | +469% |
+| JPM | 0.482 [0.456, 0.507] | 9 / 15 | 0.35 | 0.74 | +49% | +265% |
+| XOM | 0.486 [0.459, 0.514] | 7 / 15 | 0.15 | 0.61 | +6% | +189% |
+| JNJ | 0.500 [0.473, 0.526] | 8 / 15 | -0.30 | 0.71 | -31% | +143% |
+| WMT | 0.486 [0.459, 0.511] | 6 / 15 | 0.38 | 0.88 | +42% | +262% |
+| KO | 0.513 [0.490, 0.538] | 11 / 15 | 0.33 | 0.82 | +33% | +189% |
+| PG | 0.492 [0.466, 0.517] | 8 / 15 | -0.31 | 0.58 | -36% | +105% |
+
+* **Mean AUC 0.495** (range 0.482 to 0.514); above 0.5 on 4 of 10 tickers (sign-test p = 0.83).
+* **0 of 10 significant at 0.05** (about 0.5 expected by chance); **0 after Holm-Bonferroni** and **0 after Benjamini-Hochberg**. The best ticker, KO, had AUC 0.513 and beat 0.5 in 11 of 15 blocks (sign-test p = 0.059), which does not survive correction.
+* **The strategy beat buy-and-hold's Sharpe on 1 of 10 tickers** (AAPL) and lagged on total return on all 10; on JNJ and PG it lost money while the stocks rose. AAPL being the lone exception is a reminder of selection effects: it is the ticker examined most.
+* **Price forecasts:** RMSE relative to the previous-day forecast was 1.0 or worse on 8 of 10 tickers, and the two exceptions (AAPL 0.9994, PG 0.9927) are within what chance produces among ten.
+
+![AUC by ticker](docs/images/multi_ticker_auc.png)
+
+Caveats: all ten are US large caps that survived to today (survivorship bias) and move together, so they are not ten independent experiments; the corrections therefore assume slightly more independence than there is.
+
 ## Screenshots
 
 | Dashboard: prediction tab | Dashboard: backtest tab |
@@ -188,6 +215,7 @@ python main.py transformer [--tune]     # Transformer
 python main.py compare                  # side-by-side test-period comparison + significance verdict
 python main.py backtest [--cost-bps 5]  # cost-aware backtest vs buy-and-hold
 python main.py walkforward              # expanding-window walk-forward validation + diagnostics
+python main.py multiticker              # the same walk-forward study on 10 tickers with multiple-testing correction
 uvicorn api.main:app --reload           # API   -> http://127.0.0.1:8000/docs
 streamlit run app/streamlit_app.py      # UI    -> http://localhost:8501
 ```
@@ -230,7 +258,7 @@ The image uses CPU-only PyTorch, runs as a non-root user and mounts `models/`, `
 
 ## Testing and CI
 
-139 automated tests cover data loading and validation, feature causality, splitting and scaling leakage, metrics and statistics, sequence building, model training loops, inference parity with training, the backtest engine (hand-computed expectations and look-ahead checks), the service layer, the API (`TestClient`), the dashboard (`AppTest`) and the Docker/CI files. GitHub Actions runs the tests and builds the image on every push.
+144 automated tests cover data loading and validation, feature causality, splitting and scaling leakage, metrics and statistics, sequence building, model training loops, inference parity with training, the backtest engine (hand-computed expectations and look-ahead checks), the service layer, the API (`TestClient`), the dashboard (`AppTest`) and the Docker/CI files. GitHub Actions runs the tests and builds the image on every push.
 
 ## Project structure
 
@@ -257,7 +285,7 @@ stock-market-ai/
 
 ## Limitations
 
-* **Single asset, single market regime for testing.** Results are for AAPL; the test window is one ~21-month bull market. Other tickers or periods may differ (an MSFT model trained through the API also showed no edge: test AUC 0.465).
+* **Mostly one asset, and US large caps only.** The deep-learning models and most backtests are AAPL; XGBoost was also checked walk-forward on 9 other US large caps with the same conclusion. Small caps, other markets, intraday data or other periods may behave differently.
 * **Survivorship bias.** AAPL is a long-term survivor, so any conclusion about the strategy class is flattered; a real study would use a point-in-time universe including delisted stocks.
 * **Walk-forward covers XGBoost only.** The neural models were evaluated on one train/validation/test split; re-training them walk-forward would be slow on a laptop and was not done.
 * **Small effective sample and many comparisons.** About 436 single-split test days (1,890 walk-forward days) still give wide intervals, and many strategies were examined on overlapping data, which inflates the chance of a lucky-looking result (hence Bonferroni correction). Bootstrap intervals assume independent days and are slightly optimistic.
@@ -268,7 +296,7 @@ stock-market-ai/
 
 ## Future improvements
 
-Walk-forward validation for the neural models, multi-ticker and point-in-time-universe studies; multi-stock and cross-sectional models with portfolio optimisation; news sentiment (FinBERT) and LLM-based news analysis; fundamentals and alternative data; Temporal Fusion Transformer; ensembles; reinforcement-learning for position sizing; a real-time data pipeline; MLflow experiment tracking; automated CD to a cloud platform; authentication, rate limiting and monitoring for the API.
+Walk-forward validation for the neural models, a point-in-time (survivorship-free) universe; multi-stock and cross-sectional models with portfolio optimisation; news sentiment (FinBERT) and LLM-based news analysis; fundamentals and alternative data; Temporal Fusion Transformer; ensembles; reinforcement-learning for position sizing; a real-time data pipeline; MLflow experiment tracking; automated CD to a cloud platform; authentication, rate limiting and monitoring for the API.
 
 ## Reproducing the results
 

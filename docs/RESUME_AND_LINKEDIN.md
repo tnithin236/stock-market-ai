@@ -17,9 +17,10 @@ market or "beats the market" - it does not, and interviewers will probe.
   random-strategy null test and Bonferroni correction; ML signals did not beat buy-and-hold (+54.1%) after 5 bps costs and
   were indistinguishable from random strategies of equal exposure (p = 0.16).
 * Validated with expanding-window walk-forward testing (15 retrained blocks, 1,890 out-of-sample days): pooled AUC 0.514 (95% CI [0.487, 0.538]), and showed a model-free volatility filter matched the ML strategy's Sharpe (1.11 vs 1.04), exposing that apparent backtest gains came from de-risking, not direction prediction; caught and replaced a biased random-strategy null test with a turnover-matched shifted-position test.
+* Replicated the walk-forward study on 10 US large-cap stocks (1,890 out-of-sample days each): mean AUC 0.495, 0 of 10 significant (about 0.5 expected by chance; 0 after Holm-Bonferroni and FDR correction), and the ML long/flat strategy beat buy-and-hold's Sharpe on only 1 of 10.
 * Shipped a FastAPI service (prediction, background training jobs, metrics; pydantic validation, typed error handling) and a
   Streamlit dashboard sharing one tested service layer; responses expose held-out evidence and never present raw scores as probabilities.
-* Containerised with Docker/Compose (CPU-only PyTorch, non-root) and added GitHub Actions CI; 139 pytest tests including
+* Containerised with Docker/Compose (CPU-only PyTorch, non-root) and added GitHub Actions CI; 144 pytest tests including
   leakage, backtest-timing, inference-parity and API/dashboard tests.
 
 ### Shorter version (3 bullets)
@@ -27,7 +28,7 @@ market or "beats the market" - it does not, and interviewers will probe.
 * Built a leakage-safe stock forecasting system comparing baselines, XGBoost, LSTM and Transformer models (PyTorch), with
   chronological splits, confidence intervals and significance tests; found no statistically significant edge and documented why.
 * Wrote a cost-aware backtester (Sharpe, drawdown, random-strategy null test); ML strategies did not beat buy-and-hold (+54.1%) after costs.
-* Deployed via FastAPI, Streamlit, Docker and GitHub Actions CI with 139 automated tests.
+* Deployed via FastAPI, Streamlit, Docker and GitHub Actions CI with 144 automated tests.
 
 ### Optional one-liner for a skills/projects section
 
@@ -47,7 +48,9 @@ The result: none of the models showed a statistically significant edge over simp
 a partial trading-day bar leaking into data, a calibration step that silently flipped a model's direction, a luck test that favoured low-turnover strategies, and importance
 scores that counted discarded trees - each now covered by tests.
 
-The system includes a FastAPI backend, a Streamlit dashboard, Docker/Compose and GitHub Actions CI with 139 automated tests.
+I then stress-tested the conclusion with walk-forward validation (15 retrained blocks) and repeated it on 10 stocks: mean AUC 0.495, no ticker significant after multiple-testing correction.
+
+The system includes a FastAPI backend, a Streamlit dashboard, Docker/Compose and GitHub Actions CI with 144 automated tests.
 It is an experimental, educational project - not financial advice.
 
 Stack: Python, pandas, scikit-learn, XGBoost, PyTorch, Optuna, SHAP, FastAPI, Streamlit, Docker, GitHub Actions.

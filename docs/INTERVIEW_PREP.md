@@ -9,7 +9,7 @@ out loud in 60-90 seconds each. Be upfront that the project's finding is a *nega
 Transformer. The emphasis was evaluating honestly: chronological splits, train-only scaling, confidence intervals,
 significance tests and a cost-aware backtest. The result was that none of the models significantly beat naive baselines -
 best test AUC was 0.546 with an interval that includes 0.5 - and after costs no strategy beat buy-and-hold. I also built a
-FastAPI service, a Streamlit dashboard, Docker and CI, with 139 tests. The main takeaway for me is how easy it is to
+FastAPI service, a Streamlit dashboard, Docker and CI, with 144 tests. The main takeaway for me is how easy it is to
 fool yourself with time-series ML and how to build safeguards against that."
 
 ## 2. Questions and model answers
@@ -180,6 +180,23 @@ project, none is convincing.
 **Q34. Why did the classifier's trades cost so much?**
 It made 332 trades over 1,890 days. At 5 bps per unit of turnover that is about 33% of capital over the period, which is a large
 part of why its total return (+358%) trails buy-and-hold (+578%) even though its Sharpe and drawdown look good.
+
+**Q35. How do you know your conclusion is not specific to AAPL?**
+I repeated the identical walk-forward experiment on 10 liquid US stocks (1,890 out-of-sample days each, default parameters, no
+tuning). Mean AUC was 0.495; AUC exceeded 0.5 on 4 of 10; none were significant at 0.05 (about 0.5 expected by chance), and none
+after Holm-Bonferroni or Benjamini-Hochberg correction. The ML strategy beat buy-and-hold's Sharpe on one ticker (AAPL, the one I
+had studied most) and lagged on total return on all ten.
+
+**Q36. KO had AUC above 0.5 in 11 of 15 blocks. Isn't that evidence of skill?**
+It was the best of ten tickers, so a result like that is expected from selection alone. The sign-test p-value was 0.059 before
+any correction, its pooled AUC was 0.513 with an interval that includes 0.5, and with ten tickers the corrected p-value is far
+from significant. I would only believe it if it were pre-specified and replicated out of sample.
+
+**Q37. What is the difference between Holm-Bonferroni and Benjamini-Hochberg?**
+Holm controls the probability of making any false discovery (family-wise error) and is conservative; Benjamini-Hochberg controls
+the expected share of false discoveries among those reported (false discovery rate) and is more permissive. Both give zero
+discoveries here. Neither fully handles correlated tests, and stocks move together, so ten tickers are less than ten
+independent experiments.
 
 ## 3. Bugs and lessons (great "tell me about a challenge" stories)
 
