@@ -187,8 +187,8 @@ Caveats: all ten are US large caps that survived to today (survivorship bias) an
 
 | Dashboard: prediction tab | Dashboard: backtest tab |
 |---|---|
-| ![Prediction]<img width="1892" height="907" alt="Screenshot 2026-10-26 182702" src="https://github.com/user-attachments/assets/25d9803d-7951-43b5-93d9-8f806ae38fb0" />
-| ![Backtest]<img width="1902" height="907" alt="Screenshot 2026-10-26 182727" src="https://github.com/user-attachments/assets/935f06bc-9677-4936-8a8d-db6db88e5729" /> |
+| <img width="1892" height="907" alt="Screenshot 2026-10-26 182702" src="https://github.com/user-attachments/assets/25d9803d-7951-43b5-93d9-8f806ae38fb0" /> |
+| <img width="1902" height="907" alt="Screenshot 2026-10-26 182727" src="https://github.com/user-attachments/assets/935f06bc-9677-4936-8a8d-db6db88e5729" /> |
 
 | XGBoost feature importance (SHAP) | Cost sensitivity |
 |---|---|
