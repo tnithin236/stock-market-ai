@@ -43,3 +43,22 @@ def summary_stats(df: pd.DataFrame) -> Dict[str, float]:
         "max_drawdown_pct": float((close / close.cummax() - 1).min() * 100),
         "n_days": int(len(df)),
     }
+
+
+def kpi_series(df: pd.DataFrame, n_points: int = 60) -> Dict[str, np.ndarray]:
+    """Short series for the KPI-card sparklines (down-sampled to at most n_points)."""
+    close = df["Close"]
+    rets = close.pct_change()
+    out = {
+        "close": close.to_numpy(float),
+        "cum_return_pct": ((close / close.iloc[0] - 1) * 100).to_numpy(float),
+        "volatility_pct": (rets.rolling(20).std() * np.sqrt(252) * 100).to_numpy(float),
+        "drawdown_pct": ((close / close.cummax() - 1) * 100).to_numpy(float),
+    }
+    res = {}
+    for k, v in out.items():
+        v = v[np.isfinite(v)]
+        if len(v) > n_points:
+            v = v[np.linspace(0, len(v) - 1, n_points).astype(int)]
+        res[k] = v
+    return res

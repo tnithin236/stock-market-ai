@@ -19,7 +19,7 @@ def _app(monkeypatch):
 def test_dashboard_renders_without_exceptions(monkeypatch):
     at = _app(monkeypatch).run()
     assert not at.exception
-    assert any("not financial advice" in str(w.value).lower() for w in at.warning)
+    assert any("not financial advice" in str(m.value).lower() for m in at.markdown)
     assert len(at.tabs) == 8
 
 
@@ -29,3 +29,10 @@ def test_invalid_ticker_is_rejected_in_the_sidebar(monkeypatch):
     at.sidebar.button[0].click().run()
     assert not at.exception
     assert any("invalid ticker" in str(e.value).lower() for e in list(at.error) + list(at.sidebar.error))
+
+
+def test_about_page_renders(monkeypatch):
+    at = _app(monkeypatch).run()
+    at.radio[0].set_value("About").run()
+    assert not at.exception
+    assert any("About this project" in str(m.value) for m in at.markdown)

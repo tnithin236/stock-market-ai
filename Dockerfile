@@ -20,6 +20,7 @@ COPY requirements-docker.txt .
 RUN pip install -r requirements-docker.txt
 
 COPY configs ./configs
+COPY .streamlit ./.streamlit
 COPY src ./src
 COPY api ./api
 COPY app ./app

@@ -26,6 +26,24 @@ def models_exist(models_dir, ticker: str, arch: str) -> bool:
     return all(p.exists() for p in artifact_paths(models_dir, ticker, arch).values())
 
 
+def _load_checkpoint(path):
+    """torch.load with weights_only=True (safe). Checkpoints written by the training runner contain
+    torch.__version__, a TorchVersion object that the safe unpickler rejects unless allow-listed."""
+    import torch
+
+    allowed = []
+    try:
+        from torch.torch_version import TorchVersion
+        allowed.append(TorchVersion)
+    except Exception:  # noqa: BLE001 - very old/new torch layouts: fall through to the plain call
+        pass
+    safe_globals = getattr(torch.serialization, "safe_globals", None)
+    if allowed and safe_globals is not None:
+        with safe_globals(allowed):
+            return torch.load(path, map_location="cpu", weights_only=True)
+    return torch.load(path, map_location="cpu", weights_only=True)
+
+
 def _sigmoid(z: float) -> float:
     return float(1.0 / (1.0 + np.exp(-np.clip(z, -30, 30))))
 
@@ -44,7 +62,7 @@ def predict_deep(arch: str, ticker: str, feats: pd.DataFrame, models_dir, clip: 
     calibrator = joblib.load(paths["calibrator"])
 
     def run(task: str):
-        ck = torch.load(paths[task], map_location="cpu", weights_only=True)
+        ck = _load_checkpoint(paths[task])
         hp, cols = ck["hparams"], ck["features"]
         seq_len = int(hp["seq_len"])
         window = feats.iloc[-seq_len:]

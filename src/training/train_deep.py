@@ -221,7 +221,7 @@ def run_deep(
         import torch
 
         meta = {"ticker": ticker, "architecture": arch, "trained_on": date.today().isoformat(),
-                "torch_version": torch.__version__,
+                "torch_version": str(torch.__version__),
                 "train_period": [str(split.train.index.min().date()), str(split.train.index.max().date())],
                 "val_period": [str(split.val.index.min().date()), str(split.val.index.max().date())]}
         for task, blob in final.items():

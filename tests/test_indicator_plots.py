@@ -24,3 +24,11 @@ def test_prediction_equity_and_bar_figures():
     assert len(ip.plot_equity_curves(eq).data) == 2
     s = pd.Series([0.3, 0.2, 0.1], index=["a", "b", "c"])
     assert len(ip.plot_bar(s, "t", error=pd.Series([0.01, 0.02, 0.03], index=s.index)).data) == 1
+
+
+def test_model_comparison_figure_has_one_trace_per_panel():
+    cls = pd.DataFrame({"accuracy": [0.53, 0.52], "acc_lo": [0.49, 0.47], "acc_hi": [0.58, 0.57],
+                        "roc_auc": [0.5, 0.546], "auc_lo": [0.5, 0.49], "auc_hi": [0.5, 0.6]},
+                       index=["always_majority", "xgb_raw"])
+    fig = ip.plot_model_comparison_plotly(cls)
+    assert len(fig.data) == 2

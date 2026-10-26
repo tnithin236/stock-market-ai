@@ -65,3 +65,14 @@ def test_missing_artifacts_and_short_history():
         _artifacts(Path(t), "lstm", full, sup, split)
         with pytest.raises(InsufficientHistoryError):
             predict_deep("lstm", "AAPL", full.iloc[-5:], t)
+
+
+def test_checkpoint_containing_the_torch_version_loads_with_weights_only():
+    from src.serving.deep_inference import _load_checkpoint
+
+    with tempfile.TemporaryDirectory() as t:
+        path = Path(t) / "ck.pt"
+        torch.save({"meta": {"torch_version": torch.__version__}, "hparams": {"seq_len": 5},
+                    "state_dict": {"w": torch.zeros(2)}}, path)
+        ck = _load_checkpoint(path)
+    assert str(ck["meta"]["torch_version"]) == str(torch.__version__) and ck["hparams"]["seq_len"] == 5

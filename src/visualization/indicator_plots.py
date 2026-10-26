@@ -3,6 +3,7 @@ from typing import Optional
 
 import pandas as pd
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 _BLUE, _DARK, _RED, _GREEN = "#3b82f6", "#0f172a", "#dc2626", "#16a34a"
 
@@ -67,3 +68,22 @@ def plot_bar(series: pd.Series, title: str, top: int = 15, error: Optional[pd.Se
     err = dict(type="data", array=error.reindex(s.index).to_numpy()) if error is not None else None
     fig = go.Figure(go.Bar(x=s.values, y=list(s.index), orientation="h", marker_color=_BLUE, error_x=err))
     return _layout(fig, title, max(260, 24 * len(s) + 110))
+
+
+def plot_model_comparison_plotly(cls: pd.DataFrame) -> go.Figure:
+    """Accuracy and ROC-AUC with 95% intervals for every model (dashed line = the bar to beat)."""
+    d = cls[cls["roc_auc"].notna()]
+    names = list(d.index)
+    fig = make_subplots(rows=1, cols=2, shared_yaxes=True, subplot_titles=("Accuracy", "ROC-AUC"))
+    for col, (val, lo, hi) in enumerate((("accuracy", "acc_lo", "acc_hi"), ("roc_auc", "auc_lo", "auc_hi")), start=1):
+        v = d[val].to_numpy(dtype=float)
+        err_hi = (d[hi].to_numpy(dtype=float) - v).clip(min=0)
+        err_lo = (v - d[lo].to_numpy(dtype=float)).clip(min=0)
+        fig.add_trace(go.Scatter(x=v, y=names, mode="markers", marker=dict(color=_BLUE, size=9), showlegend=False,
+                                 error_x=dict(type="data", symmetric=False, array=err_hi, arrayminus=err_lo,
+                                              color="#94a3b8")), row=1, col=col)
+    ref = float(d.loc["always_majority", "accuracy"]) if "always_majority" in d.index else 0.5
+    fig.add_vline(x=ref, line_dash="dot", line_color=_RED, row=1, col=1)
+    fig.add_vline(x=0.5, line_dash="dot", line_color=_RED, row=1, col=2)
+    fig.update_yaxes(autorange="reversed")
+    return _layout(fig, "Test-set model comparison (95% intervals)", max(300, 34 * len(names) + 140))
